@@ -1,29 +1,7 @@
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
+*.jpeg
+*.jpg
+*.png
+*.h5
 
-# Precompiled Headers
-*.gch
-*.pch
+**/local
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex

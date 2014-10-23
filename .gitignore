@@ -4,6 +4,9 @@
 *.h5
 
 *.py~
+*.pyc
+
+variables.env
 
 **/local
 

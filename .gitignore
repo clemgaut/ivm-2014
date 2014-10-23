@@ -6,7 +6,9 @@
 *.py~
 *.pyc
 
-variables.env
+*.glade
+
+variables.env*
 
 **/local
 

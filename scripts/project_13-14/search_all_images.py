@@ -23,6 +23,57 @@ def matrix2csv(m, file_name="default.csv"):
 	c.writerow(row)
       
     f.close()
+    
+def matrix2gdf(m, filename="default.gdf"):
+  f = open(filename, "w")
+  
+  #Write nodes
+  f.write("nodedef>name VARCHAR,label VARCHAR,image VARCHAR")
+  f.write(os.linesep)
+  
+  #List all query nodes
+  for qi_nb in range(m.shape[0]):
+	row = []
+	row.append("Q" + str(qi_nb))
+	row.append(Qimage_list[qi_nb])
+	row.append(os.path.join(query_dir, Qimage_list[qi_nb]))
+	
+	f.write(",".join(row))
+	f.write(os.linesep)
+
+  #List all images nodes (non query)
+  for ref_img_nb in range(m.shape[1]):
+	#Display image only if it is a neighbour
+	if np.sum(m[:,ref_img_nb]) > 0:
+	  row = []
+	  row.append(str(ref_img_nb))
+	  row.append(image_list[ref_img_nb])
+	  row.append(os.path.join(images_dir, image_list[ref_img_nb]))
+	  
+	  f.write(",".join(row))
+	  f.write(os.linesep)
+
+  #Write edges
+  f.write("edgedef>node1,node2,weight DOUBLE")
+  f.write(os.linesep)
+  
+  for qi_nb in range(m.shape[0]):
+	nn_tuple = np.nonzero(m[qi_nb])
+	#nn_tuple is a tuple of array. To get all neigbours, get only the first value
+	nn = nn_tuple[0]
+	
+	for neighbour in nn:
+	  row = []
+	  weight = m[qi_nb,neighbour]
+	  row.append("Q" + str(qi_nb))
+	  row.append(str(neighbour))
+	  row.append(str(weight))
+	  
+	  f.write(",".join(row))
+	  f.write(os.linesep)
+	  
+  f.close()
+  
 
 def snn(query_image, k):
         d = list(gist_factory.getbyfile(os.path.join(query_dir, query_image)))
@@ -138,19 +189,23 @@ resultsBinary = np.zeros((Q_N, N), dtype=np.int) # will record occurences
 
 resultsScoresSNN = np.zeros((Q_N, N), dtype=np.float32) # will record the score for SNN
 
-#number of nearest shared neighbours
-kSNN = 5
+#number of nearest neighbours
+kNN = 5
 
 # Loop on all the query images and for each, get its k NN
 for qi_nb, query_image in enumerate(Qimage_list):
     d = list(gist_factory.getbyfile(os.path.join(query_dir, query_image)))
     labels, dists = db.select(d[0]['desc'])
-    resultsScores[qi_nb, labels] = 1. / (1. + dists)
-    resultsDists[qi_nb, labels] = dists
-    resultsBinary[qi_nb, labels] = 1
+    
+    res_dists = np.zeros((1, kNN), dtype=np.float32)
+    res_dists[0] = dists[0][:kNN]
+    res_lab = [labels[0][:kNN]]
+    resultsScores[qi_nb, res_lab] = 1. / (1. + res_dists)
+    resultsDists[qi_nb, res_lab] = res_dists
+    resultsBinary[qi_nb, res_lab] = 1
     
     #Compute SNN scores and store them
-    score_list = snn(query_image, kSNN)
+    score_list = snn(query_image, kNN)
     
     labels = [[s[0] for s in score_list]]
     scores = [[s[1] for s in score_list]]
@@ -158,7 +213,8 @@ for qi_nb, query_image in enumerate(Qimage_list):
     resultsScoresSNN[qi_nb, labels] = scores
     
     
-matrix2csv(resultsScoresSNN, "snn_neighbours.csv")
+matrix2gdf(resultsScoresSNN, "snn.gdf")
+matrix2gdf(resultsScores, "knn.gdf")
 
 
 #provided result is initialised with ZEROs...

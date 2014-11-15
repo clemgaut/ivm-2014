@@ -213,8 +213,8 @@ for qi_nb, query_image in enumerate(Qimage_list):
     resultsScoresSNN[qi_nb, labels] = scores
     
     
-matrix2gdf(resultsScoresSNN, "snn.gdf")
-matrix2gdf(resultsScores, "knn.gdf")
+matrix2gdf(resultsScoresSNN, "snn-"+str(kNN)+".gdf")
+matrix2gdf(resultsScores, "knn-"+str(kNN)+".gdf")
 
 
 #provided result is initialised with ZEROs...

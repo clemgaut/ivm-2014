@@ -3,7 +3,7 @@
 
 from config import *
 
-import csv
+import csv, sys, getopt
 
 def matrix2csv(m, file_name="default.csv"):
   
@@ -172,62 +172,56 @@ def snn(query_image, k):
         
         return [(id, score) for (id, score) in final_result]
 
-clean_display()
+if __name__ == "__main__":      
+  clean_display()
 
-Qimage_list = sorted([f for f in os.listdir(query_dir) if f.endswith('.jpg')])
-Q_N = len(Qimage_list)
+  Qimage_list = sorted([f for f in os.listdir(query_dir) if f.endswith('.jpg')])
+  Q_N = len(Qimage_list)
 
-db.load()
+  db.load()
 
-# Create some matrix for the result. Each made of as many lines as there are query
-# images, and as many columns as there are images in the database.
-#
-# Sure, we could use fewer data structures but who cares?
-resultsScores = np.zeros((Q_N, N), dtype=np.float32) # will record a score
-resultsDists = np.zeros((Q_N, N), dtype=np.float32) # will record distances. NO distances can be exactly 0 here.
-resultsBinary = np.zeros((Q_N, N), dtype=np.int) # will record occurences
+  # Create some matrix for the result. Each made of as many lines as there are query
+  # images, and as many columns as there are images in the database.
+  #
+  resultsScores = np.zeros((Q_N, N), dtype=np.float32) # will record a score
+  resultsDists = np.zeros((Q_N, N), dtype=np.float32) # will record distances. NO distances can be exactly 0 here.
+  resultsBinary = np.zeros((Q_N, N), dtype=np.int) # will record occurences
 
-resultsScoresSNN = np.zeros((Q_N, N), dtype=np.float32) # will record the score for SNN
-
-#number of nearest neighbours
-kNN = 5
-
-# Loop on all the query images and for each, get its k NN
-for qi_nb, query_image in enumerate(Qimage_list):
-    d = list(gist_factory.getbyfile(os.path.join(query_dir, query_image)))
-    labels, dists = db.select(d[0]['desc'])
-    
-    res_dists = np.zeros((1, kNN), dtype=np.float32)
-    res_dists[0] = dists[0][:kNN]
-    res_lab = [labels[0][:kNN]]
-    resultsScores[qi_nb, res_lab] = 1. / (1. + res_dists)
-    resultsDists[qi_nb, res_lab] = res_dists
-    resultsBinary[qi_nb, res_lab] = 1
-    
-    #Compute SNN scores and store them
-    score_list = snn(query_image, kNN)
-    
-    labels = [[s[0] for s in score_list]]
-    scores = [[s[1] for s in score_list]]
-    
-    resultsScoresSNN[qi_nb, labels] = scores
-    
-    
-matrix2gdf(resultsScoresSNN, "snn-"+str(kNN)+".gdf")
-matrix2gdf(resultsScores, "knn-"+str(kNN)+".gdf")
-
-
-#provided result is initialised with ZEROs...
-# np.count_nonzero(resultsDists[0])   :   this gives the # of NN found for the first image (should be 100)
-# np.nonzero(resultsDists[0])   :   indices where these NN have been found
-# resultsDists[0,np.nonzero(resultsDists[0])] : their score or distance...
-
-#np.max(np.sum(resultsBinary,0)) : le nb de fois que l'image la + populaire apparait
-#np.argmax(np.sum(resultsBinary,0)) : indice de la plus populaire
-#DBimage_list[np.argmax(np.sum(resultsBinary,0))] son petit nom
-
-# if you want to save the results to facilitate subsequent processing, here you go:
-#np.save(os.path.join(results_dir, "resultsScores.npy"), resultsBinary)
-#np.save(os.path.join(results_dir, "resultsBinary.npy"), resultsBinary)
-#np.save(os.path.join(results_dir, "resultsDists.npy"), resultsBinary)
+  resultsScoresSNN = np.zeros((Q_N, N), dtype=np.float32) # will record the score for SNN
+  
+  #number of nearest neighbours
+  kNN = 5
+  
+  #Get knn number
+  try:
+      opts, args = getopt.getopt(sys.argv[1:],"k:")
+  except getopt.GetoptError:
+      print 'defaukt knn value = 5'
+      
+  for opt, arg in opts:
+    if opt == "-k":
+      kNN = int(arg)    
+  # Loop on all the query images and for each, get its k NN
+  for qi_nb, query_image in enumerate(Qimage_list):
+      d = list(gist_factory.getbyfile(os.path.join(query_dir, query_image)))
+      labels, dists = db.select(d[0]['desc'])
+      
+      res_dists = np.zeros((1, kNN), dtype=np.float32)
+      res_dists[0] = dists[0][:kNN]
+      res_lab = [labels[0][:kNN]]
+      resultsScores[qi_nb, res_lab] = 1. / (1. + res_dists)
+      resultsDists[qi_nb, res_lab] = res_dists
+      resultsBinary[qi_nb, res_lab] = 1
+      
+      #Compute SNN scores and store them
+      score_list = snn(query_image, kNN)
+      
+      labels = [[s[0] for s in score_list]]
+      scores = [[s[1] for s in score_list]]
+      
+      resultsScoresSNN[qi_nb, labels] = scores
+      
+      
+  matrix2gdf(resultsScoresSNN, "snn-"+str(kNN)+".gdf")
+  matrix2gdf(resultsScores, "knn-"+str(kNN)+".gdf")
 
